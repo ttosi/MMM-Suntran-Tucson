@@ -119,10 +119,10 @@ route,direction,day,rawtime,period,time
 4,east,week,853,pm,8:53 pm
 4,east,week,923,pm,9:23 pm
 4,east,week,953,pm,9:53 pm
-4,east,week,1023,pm,1:23 pm
-4,east,week,1053,pm,1:53 pm
-4,east,week,1123,pm,1:23 pm
-4,east,week,1153,pm,1:53 pm
+4,east,week,1023,pm,10:23 pm
+4,east,week,1053,pm,10:53 pm
+4,east,week,1123,pm,11:23 pm
+4,east,week,1153,pm,11:53 pm
 4,west,sat,634,am,6:34 am
 4,west,sat,704,am,7:04 am
 4,west,sat,734,am,7:34 am
