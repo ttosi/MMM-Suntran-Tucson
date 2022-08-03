@@ -29,14 +29,14 @@ routeDataStream
     routeData.push(row);
   })
   .on("end", () => {
-    const now = new Date();
-    console.log(now)
-    const days = ["sun", "week", "week", "week", "week", "week", "sat"];
-    const day = days[format(now, "i")];
-    const time = format(now, "Hm");
-    console.log(day, time)
+    // const now = new Date();
+    // console.log(now)
+    // const days = ["sun", "week", "week", "week", "week", "week", "sat"];
+    // const day = days[format(now, "i")];
+    // const time = format(now, "Hm");
+    // console.log(day, time)
     
-    console.log(bus.getNext(4, "east", day, time, "pm", 5));
+    console.log(bus.getNext(4, "east", "week", 230, "pm", 5));
   });
 
 // Module.register("MMM-Suntran-Tucson", {
