@@ -38,7 +38,6 @@ const suntran = {
     },
     // load rows from full_routes (a derived table)
     // filtered by routeid and stopid into memory
-    //! refactor to not set data directly, should return values
     async loadRouteData() {
         const rows = await this.dbConn.all(`
             SELECT
@@ -66,7 +65,6 @@ const suntran = {
     },
     // get a row for each route/stop that will be
     // used for displaying on mirror
-    //! refactor to not set data directly, should return values
     async loadRouteMetaData() {
         return await this.dbConn.all(`
             SELECT DISTINCT route_short_name AS route,
