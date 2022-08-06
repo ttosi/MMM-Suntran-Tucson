@@ -51,8 +51,9 @@ const suntran = {
         `);
 
         // load route/stop data into memory
+        let routeData = []
         rows.map((r) => {
-            this.routeData.push([
+            routeData.push([
                 r.route_short_name,
                 r.stop_id,
                 r.service_id, // 1 = weekday, 2 = sat, 3 = sun
@@ -61,12 +62,13 @@ const suntran = {
                 r.stop_name
             ]);
         });
+        return routeData;
     },
     // get a row for each route/stop that will be
     // used for displaying on mirror
     //! refactor to not set data directly, should return values
     async loadRouteMetaData() {
-        this.routeMeta = await this.dbConn.all(`
+        return await this.dbConn.all(`
             SELECT DISTINCT route_short_name AS route,
                 trip_headsign as headSign, stop_id as stopId, stop_name AS stopName,
                 stop_code as stopCode, route_color AS backgroundColor, route_text_color AS textColor
@@ -77,11 +79,11 @@ const suntran = {
         `);
     },
     // loop through routes and stop to get the next stop times
-    //! refactor to not set data directly, should return values
     loadNextStopTimes() {
+        let stopTimes = [];
         if (this.currentTime()) {
             this.defaults.routes.forEach((r) => {
-                this.nextStopTimes.push(this.findNextStopTimes({
+                stopTimes.push(this.findNextStopTimes({
                     route: r.route,
                     stop: r.stop,
                     ...this.currentTime(),
@@ -89,6 +91,7 @@ const suntran = {
                 }));
             })
         }
+        return stopTimes;
     },
     // given the current time, day, route and stops loop
     // until the next valid departure time is found
@@ -148,10 +151,11 @@ const suntran = {
 
 (async () => {
     await suntran.openDatabase();
-    await suntran.loadRouteData();
-    await suntran.loadRouteMetaData();
+    suntran.routeData = await suntran.loadRouteData();
+    suntran.routeMeta = await suntran.loadRouteMetaData();
     await suntran.closeDatabase();
-    suntran.loadNextStopTimes();
+
+    suntran.nextStopTimes = suntran.loadNextStopTimes();
 
     console.log(suntran.routeMeta);
     console.log(suntran.nextStopTimes);
