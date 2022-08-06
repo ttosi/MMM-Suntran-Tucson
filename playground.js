@@ -1,5 +1,3 @@
-// const fs = require("fs").promises;
-// const csv = require("async-csv");
 const sqlite3 = require("sqlite3");
 const sqlite = require("sqlite");
 const { format } = require("date-fns");
@@ -22,11 +20,13 @@ const suntran = {
         fadeSpeed: 4000,
         updateInterval: 60000,
     },
-    days: ["sun", "week", "week", "week", "week", "week", "sat"],
+    days: [3, 1, 1, 1, 1, 1, 2],
     routeData: [],
     nextStopTimes: [],
     getNextStopTimes(data) {
         let index = -1;
+        let sanityCheck = 0;
+
         while (index === -1) {
             index = this.routeData.findIndex(
                 (row) =>
@@ -36,20 +36,26 @@ const suntran = {
                     row[3] === data.time
             );
             data.time++;
+            sanityCheck++;
+            if (sanityCheck > 25) {
+                return false;
+            }
         }
 
         return this.routeData.slice(index, index + data.limit).map(r => {
             return {
                 route: r[0],
                 stop: r[1],
-                time: r[3]
+                time: r[3],
+                headSign: r[4],
+                stopName: r[5]
             }
         });
     },
     currentTime() {
         const now = new Date();
         const day = this.days[format(now, "i")];
-        const time = format(now, "HHmm");
+        const time = parseInt(format(now, "HHmm"));
 
         if (this.shouldRun(day, time)) {
             return {
@@ -60,9 +66,10 @@ const suntran = {
         return false;
     },
     shouldRun(day, time) {
+        const days = ["week", "sat", "sun"]
         return (
-            this.defaults[day + "StartTime"] < time &&
-            this.defaults[day + "EndTime"] > time
+            this.defaults[days[day - 1] + "StartTime"] < time &&
+            this.defaults[days[day - 1] + "EndTime"] > time
         );
     },
 };
@@ -75,39 +82,37 @@ const suntran = {
 
     const rows = await db.all(`
         SELECT
-            route_short_name, stop_id, day, departure_time
+            route_short_name, stop_id, service_id, departure_time, trip_headsign, stop_name
         FROM full_routes
         WHERE 
             route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
         AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
-        ORDER BY route_short_name, stop_id, day, departure_time
+        ORDER BY route_short_name, stop_id, service_id, departure_time
     `);
 
     const meta = await db.all(`
-        SELECT DISTINCT
-            route_short_name AS route,
-            stop_name AS name,
-            route_color AS color
+        SELECT DISTINCT route_short_name AS route,
+            trip_headsign as headSign, stop_id as stopId, stop_name AS stopName,
+            stop_code as stopCode, route_color AS backgroundColor, route_text_color AS textColor
         FROM full_routes
         WHERE 
             route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
         AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
     `);
-
-    console.log(meta);
 
     rows.map((r) => {
         suntran.routeData.push([
             r.route_short_name,
             r.stop_id,
-            r.day,
+            r.service_id, // 1 = weekday, 2 = sat, 3 = sun
             r.departure_time,
+            r.trip_headsign,
+            r.stop_name
         ]);
     });
 
-
     if (suntran.currentTime()) {
-        suntran.defaults.routes.forEach((r, index) => {
+        suntran.defaults.routes.forEach((r) => {
             suntran.nextStopTimes.push(suntran.getNextStopTimes({
                 route: r.route,
                 stop: r.stop,
@@ -117,5 +122,6 @@ const suntran = {
         })
     }
 
+    console.log(meta);
     console.log(suntran.nextStopTimes);
 })();

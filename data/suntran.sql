@@ -1,7 +1,7 @@
--- stop data
+-- get stops data
 SELECT
     route_short_name, stop_id,
-    day, departure_time
+    service_id, departure_time
 FROM full_routes
 WHERE
     route_short_name IN [4, 11]
@@ -9,7 +9,7 @@ WHERE
 ORDER BY
     route_short_name,
     stop_id,
-    DAY,
+    service_id,
     departure_time 
     
 -- get stops meta data
@@ -21,9 +21,17 @@ WHERE
     route_short_name IN [4, 11]
     AND stop_id IN [11150, 11109, 10981, 11610 ] 
 
--- update db data
-/*
-UPDATE full_routes SET DAY = 'week' WHERE service_id = 1;
-UPDATE full_routes SET DAY = 'sat' WHERE service_id = 2;
-UPDATE full_routes SET DAY = 'sun' WHERE service_id = 3;
-*/
+-- create full_routes table
+DROP TABLE IF EXISTS full_routes;
+CREATE TABLE full_routes AS
+SELECT
+	r.route_short_name, r.route_text_color, r.route_color,
+	t.direction_id, t.trip_headsign, c.service_id,
+	replace(substr(st.arrival_time, 1, length(st.arrival_time) - 2), ":", "") as arrival_time,
+	replace(substr(st.departure_time, 1, length(st.departure_time) - 2), ":", "") as departure_time,
+	st.arrival_time, st.departure_time, s.stop_id, s.stop_code, s.stop_name
+FROM routes r
+JOIN trips t ON t.route_id = r.route_id
+JOIN calendar c ON c.service_id = t.service_id
+JOIN stop_times st ON st.trip_id = t.trip_id
+join stops s on s.stop_id = st.stop_id;
