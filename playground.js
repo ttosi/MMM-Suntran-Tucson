@@ -10,7 +10,7 @@ const suntran = {
             { route: 11, stop: 10981 },
             { route: 11, stop: 11610 }
         ],
-        limit: 5,
+        limit: 6,
         weekStartTime: 500,
         weekEndTime: 2355,
         satStartTime: 615,
@@ -22,11 +22,79 @@ const suntran = {
     },
     days: [3, 1, 1, 1, 1, 1, 2],
     routeData: [],
+    routeMeta: [],
     nextStopTimes: [],
-    getNextStopTimes(data) {
-        let index = -1;
-        let sanityCheck = 0;
+    dbConn: undefined,
+    // open sqlite database called suntran.db
+    // from data folder
+    async openDatabase() {
+        this.dbConn = await sqlite.open({
+            filename: "./data/suntran.db",
+            driver: sqlite3.Database,
+        });
+    },
+    async closeDatabase() {
+        await this.dbConn.close();
+    },
+    // load rows from full_routes (a derived table)
+    // filtered by routeid and stopid into memory
+    async loadRouteData() {
+        const rows = await this.dbConn.all(`
+            SELECT
+                route_short_name, stop_id, service_id, departure_time, trip_headsign, stop_name
+            FROM full_routes
+            WHERE 
+                route_short_name IN (${this.defaults.routes.map(r => r.route)})
+            AND stop_id IN (${this.defaults.routes.map(s => s.stop)})
+            ORDER BY route_short_name, stop_id, service_id, departure_time
+        `);
 
+        // load route/stop data into memory
+        rows.map((r) => {
+            this.routeData.push([
+                r.route_short_name,
+                r.stop_id,
+                r.service_id, // 1 = weekday, 2 = sat, 3 = sun
+                r.departure_time,
+                r.trip_headsign,
+                r.stop_name
+            ]);
+        });
+    },
+    // get a row for each route/stop that will be
+    // used for displaying on mirror
+    //! refactor to not set data directly, should return values
+    async loadRouteMetaData() {
+        this.routeMeta = await this.dbConn.all(`
+            SELECT DISTINCT route_short_name AS route,
+                trip_headsign as headSign, stop_id as stopId, stop_name AS stopName,
+                stop_code as stopCode, route_color AS backgroundColor, route_text_color AS textColor
+            FROM full_routes
+            WHERE 
+                route_short_name IN (${this.defaults.routes.map(r => r.route)})
+            AND stop_id IN (${this.defaults.routes.map(s => s.stop)})
+        `);
+    },
+    // loop through routes and stop to get the next stop times
+    //! refactor to not set data directly, should return values
+    loadNextStopTimes() {
+        if (this.currentTime()) {
+            this.defaults.routes.forEach((r) => {
+                this.nextStopTimes.push(this.findNextStopTimes({
+                    route: r.route,
+                    stop: r.stop,
+                    ...this.currentTime(),
+                    limit: this.defaults.limit
+                }));
+            })
+        }
+    },
+    // given the current time, day, route and stops loop
+    // until the next valid departure time is found
+    // and return that row + limit (number of future
+    // departure times)
+    findNextStopTimes(data) {
+        let index = -1;
         while (index === -1) {
             index = this.routeData.findIndex(
                 (row) =>
@@ -36,10 +104,6 @@ const suntran = {
                     row[3] === data.time
             );
             data.time++;
-            sanityCheck++;
-            if (sanityCheck > 25) {
-                return false;
-            }
         }
 
         return this.routeData.slice(index, index + data.limit).map(r => {
@@ -52,6 +116,8 @@ const suntran = {
             }
         });
     },
+    // get the current time and day (day 
+    // can be week = 1, sat = 2 or sun = 2
     currentTime() {
         const now = new Date();
         const day = this.days[format(now, "i")];
@@ -65,6 +131,11 @@ const suntran = {
         }
         return false;
     },
+    // check if the current time is in between
+    // startTimes (20 minutes before 1st bus) and 
+    // endTimes (5 minutes after last bus) that
+    // are configured in suntran.defaults
+    //! TODO replace startTimes and endTimes with db query
     shouldRun(day, time) {
         const days = ["week", "sat", "sun"]
         return (
@@ -75,53 +146,69 @@ const suntran = {
 };
 
 (async () => {
-    const db = await sqlite.open({
-        filename: "./data/suntran.db",
-        driver: sqlite3.Database,
-    });
+    // open sqlite database called suntran.db
+    // from data folder
+    // const db = await sqlite.open({
+    //     filename: "./data/suntran.db",
+    //     driver: sqlite3.Database,
+    // });
 
-    const rows = await db.all(`
-        SELECT
-            route_short_name, stop_id, service_id, departure_time, trip_headsign, stop_name
-        FROM full_routes
-        WHERE 
-            route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
-        AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
-        ORDER BY route_short_name, stop_id, service_id, departure_time
-    `);
+    // // get rows from full_routes (a derived table)
+    // // filtered by routeid and stopid
+    // const rows = await db.all(`
+    //     SELECT
+    //         route_short_name, stop_id, service_id, departure_time, trip_headsign, stop_name
+    //     FROM full_routes
+    //     WHERE 
+    //         route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
+    //     AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
+    //     ORDER BY route_short_name, stop_id, service_id, departure_time
+    // `);
 
-    const meta = await db.all(`
-        SELECT DISTINCT route_short_name AS route,
-            trip_headsign as headSign, stop_id as stopId, stop_name AS stopName,
-            stop_code as stopCode, route_color AS backgroundColor, route_text_color AS textColor
-        FROM full_routes
-        WHERE 
-            route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
-        AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
-    `);
+    // // get a row for each route/stop that will be
+    // // used for displaying on mirror
+    // const meta = await db.all(`
+    //     SELECT DISTINCT route_short_name AS route,
+    //         trip_headsign as headSign, stop_id as stopId, stop_name AS stopName,
+    //         stop_code as stopCode, route_color AS backgroundColor, route_text_color AS textColor
+    //     FROM full_routes
+    //     WHERE 
+    //         route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
+    //     AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
+    // `);
 
-    rows.map((r) => {
-        suntran.routeData.push([
-            r.route_short_name,
-            r.stop_id,
-            r.service_id, // 1 = weekday, 2 = sat, 3 = sun
-            r.departure_time,
-            r.trip_headsign,
-            r.stop_name
-        ]);
-    });
+    // await db.close();
+    await suntran.openDatabase();
+    await suntran.loadRouteData();
+    await suntran.loadRouteMetaData();
+    await suntran.closeDatabase();
+    suntran.loadNextStopTimes();
+    // suntran.nextStopTimes = suntran.loadNextStopTimes();
 
-    if (suntran.currentTime()) {
-        suntran.defaults.routes.forEach((r) => {
-            suntran.nextStopTimes.push(suntran.getNextStopTimes({
-                route: r.route,
-                stop: r.stop,
-                ...suntran.currentTime(),
-                limit: suntran.defaults.limit
-            }));
-        })
-    }
+    // // load the rows from db quesry into memory
+    // rows.map((r) => {
+    //     suntran.routeData.push([
+    //         r.route_short_name,
+    //         r.stop_id,
+    //         r.service_id, // 1 = weekday, 2 = sat, 3 = sun
+    //         r.departure_time,
+    //         r.trip_headsign,
+    //         r.stop_name
+    //     ]);
+    // });
 
-    console.log(meta);
+
+    // if (suntran.currentTime()) {
+    //     suntran.defaults.routes.forEach((r) => {
+    //         suntran.nextStopTimes.push(suntran.findNextStopTimes({
+    //             route: r.route,
+    //             stop: r.stop,
+    //             ...suntran.currentTime(),
+    //             limit: suntran.defaults.limit
+    //         }));
+    //     })
+    // }
+    // console.log(suntran.routeData)
+    // console.log(suntran.routeMeta);
     console.log(suntran.nextStopTimes);
 })();
