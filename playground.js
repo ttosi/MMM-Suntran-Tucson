@@ -38,6 +38,7 @@ const suntran = {
     },
     // load rows from full_routes (a derived table)
     // filtered by routeid and stopid into memory
+    //! refactor to not set data directly, should return values
     async loadRouteData() {
         const rows = await this.dbConn.all(`
             SELECT
@@ -146,69 +147,12 @@ const suntran = {
 };
 
 (async () => {
-    // open sqlite database called suntran.db
-    // from data folder
-    // const db = await sqlite.open({
-    //     filename: "./data/suntran.db",
-    //     driver: sqlite3.Database,
-    // });
-
-    // // get rows from full_routes (a derived table)
-    // // filtered by routeid and stopid
-    // const rows = await db.all(`
-    //     SELECT
-    //         route_short_name, stop_id, service_id, departure_time, trip_headsign, stop_name
-    //     FROM full_routes
-    //     WHERE 
-    //         route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
-    //     AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
-    //     ORDER BY route_short_name, stop_id, service_id, departure_time
-    // `);
-
-    // // get a row for each route/stop that will be
-    // // used for displaying on mirror
-    // const meta = await db.all(`
-    //     SELECT DISTINCT route_short_name AS route,
-    //         trip_headsign as headSign, stop_id as stopId, stop_name AS stopName,
-    //         stop_code as stopCode, route_color AS backgroundColor, route_text_color AS textColor
-    //     FROM full_routes
-    //     WHERE 
-    //         route_short_name IN (${suntran.defaults.routes.map(r => r.route)})
-    //     AND stop_id IN (${suntran.defaults.routes.map(s => s.stop)})
-    // `);
-
-    // await db.close();
     await suntran.openDatabase();
     await suntran.loadRouteData();
     await suntran.loadRouteMetaData();
     await suntran.closeDatabase();
     suntran.loadNextStopTimes();
-    // suntran.nextStopTimes = suntran.loadNextStopTimes();
 
-    // // load the rows from db quesry into memory
-    // rows.map((r) => {
-    //     suntran.routeData.push([
-    //         r.route_short_name,
-    //         r.stop_id,
-    //         r.service_id, // 1 = weekday, 2 = sat, 3 = sun
-    //         r.departure_time,
-    //         r.trip_headsign,
-    //         r.stop_name
-    //     ]);
-    // });
-
-
-    // if (suntran.currentTime()) {
-    //     suntran.defaults.routes.forEach((r) => {
-    //         suntran.nextStopTimes.push(suntran.findNextStopTimes({
-    //             route: r.route,
-    //             stop: r.stop,
-    //             ...suntran.currentTime(),
-    //             limit: suntran.defaults.limit
-    //         }));
-    //     })
-    // }
-    // console.log(suntran.routeData)
-    // console.log(suntran.routeMeta);
+    console.log(suntran.routeMeta);
     console.log(suntran.nextStopTimes);
 })();
