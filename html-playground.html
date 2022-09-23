@@ -1,0 +1,43 @@
+<style>
+    .container {
+        display: flex;
+    }
+
+    .bus-tag {
+        flex-grow: 1;
+        /* height: 50px; */
+        background-color: crimson;
+        color: white;
+        border-radius: 5px;
+        font-family: sans-serif;
+        font-weight: 700;
+        font-size: 13pt;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .bus-tag+.bus-tag {
+        margin-left: 2%;
+    }
+
+    .r4 {
+        background-color: #0096D1;
+    }
+
+    .r11 {
+        background-color: #7C5C36;
+    }
+</style>
+<div>
+    <div>To: DODGE/RIVER</div>
+    <div class="container">
+        <div class="bus-tag r4">
+            <div>4</div>
+            <div>Next Bus: 10:00</div>
+        </div>
+        <div class="bus-tag r4">4</div>
+        <div class="bus-tag r4">4</div>
+        <div class="bus-tag r11">11</div>
+        <div class="bus-tag r11">11</div>
+        <div class="bus-tag r11">11</div>
+    </div>
